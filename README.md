@@ -28,8 +28,6 @@ uvicorn app.main:app --reload
 
 Visit Swagger UI at: http://localhost:8000/docs
 
----
-
 ## 🧪 Try It
 
 ```bash
@@ -50,8 +48,6 @@ Response:
   "translation": "Por favor apoya mi viaje médico."
 }
 ```
-
----
 
 ## 🐳 Running with Docker (Optional)
 
