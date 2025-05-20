@@ -1,11 +1,6 @@
 🌍 auto-translation API (2025 GFM Hackathon)
 
-A minimal FastAPI-based translation API using HuggingFace Transformers.
-
-**Input:** A fundraiser campaign in any language  
-**Output:** Translation to the target language
-
----
+> A minimal FastAPI-based translation API using HuggingFace transformers.
 
 ## 🛠 Setup
 
