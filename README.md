@@ -1,4 +1,4 @@
-# 🌍 Text Translator API (2025 GFM Hackathon)
+🌍 auto-translation API (2025 GFM Hackathon)
 
 A minimal FastAPI-based translation API using HuggingFace Transformers.
 
