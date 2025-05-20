@@ -4,11 +4,11 @@
 
 ## 🛠 Setup
 
-### 1. Clone and enter the directory
+### 1. Clone and change directory
 
 ```bash
-git clone https://github.com/your-username/text-translator-api.git
-cd text-translator-api
+git clone https://github.com/iiglesias-gfm/auto-translation.git
+cd auto-translation
 ```
 
 ### 2. Install dependencies
