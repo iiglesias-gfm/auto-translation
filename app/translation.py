@@ -9,6 +9,7 @@ import nltk
 nltk.download("punkt")
 nltk.download('punkt_tab')
 from nltk.tokenize import sent_tokenize
+from langdetect import detect
 
 model_cache = {}
 M2M_LANGUAGES = M2M100Tokenizer.from_pretrained("facebook/m2m100_418M").lang_code_to_id.keys()
@@ -72,6 +73,13 @@ def chunk_text(text, max_tokens, tokenizer):
         chunks.append(current_chunk.strip())
 
     return chunks
+
+# Language detection
+def detect_language(text: str) -> str:
+    try:
+        return detect(text)
+    except Exception as e:
+        raise ValueError(f"Unable to detect language: {e}")
 
 def load_marian_model(src_lang, tgt_lang):
     model_name = f"Helsinki-NLP/opus-mt-{src_lang}-{tgt_lang}"
