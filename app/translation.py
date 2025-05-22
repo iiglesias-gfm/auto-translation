@@ -81,6 +81,16 @@ def detect_language(text: str) -> str:
     except Exception as e:
         raise ValueError(f"Unable to detect language: {e}")
 
+# Browser language fetch    
+def get_best_browser_lang(accept_language: str) -> str:
+    supported = set(M2M_LANGUAGES)
+    for lang_entry in accept_language.split(","):
+        lang_code = lang_entry.split(";")[0].strip().lower()
+        lang_code = lang_code.split("-")[0]
+        if lang_code in supported:
+            return lang_code
+    return "en"  # fallback
+
 def load_marian_model(src_lang, tgt_lang):
     model_name = f"Helsinki-NLP/opus-mt-{src_lang}-{tgt_lang}"
     if model_name not in model_cache:
