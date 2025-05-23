@@ -1,6 +1,11 @@
 # 🌍 auto-translation API (2025 GFM Hackathon)
 
-> A minimal FastAPI-based translation API using HuggingFace transformers.
+A simple yet flexible translation API:  
+- Automatically detects the input language — no need to specify it.  
+- Supports over 100 languages.  
+- Choose between open-source transformer models or OpenAI’s LLM-powered translation.  
+- Automatically selects the user’s browser language as the default output (when not provided).  
+- Designed for scalability with full async support and non-blocking concurrency.
 
 ## 🛠 Setup
 

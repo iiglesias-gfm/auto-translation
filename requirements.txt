@@ -6,3 +6,4 @@ pydantic
 sentencepiece
 nltk
 langdetect
+httpx

@@ -10,6 +10,12 @@ nltk.download("punkt")
 nltk.download('punkt_tab')
 from nltk.tokenize import sent_tokenize
 from langdetect import detect
+import httpx
+import asyncio
+
+BYOP_API_URL = "https://api-inference.internal.gfm-production.com/v1/genai/custom_prompt"
+TRANSLATION_POLL_INTERVAL_SECS = 1
+TRANSLATION_MAX_RETRIES = 10
 
 model_cache = {}
 M2M_LANGUAGES = M2M100Tokenizer.from_pretrained("facebook/m2m100_418M").lang_code_to_id.keys()
@@ -91,6 +97,7 @@ def get_best_browser_lang(accept_language: str) -> str:
             return lang_code
     return "en"  # fallback
 
+# Load HuggingFace models
 def load_marian_model(src_lang, tgt_lang):
     model_name = f"Helsinki-NLP/opus-mt-{src_lang}-{tgt_lang}"
     if model_name not in model_cache:
@@ -107,6 +114,7 @@ def load_m2m_model():
         model_cache[model_name] = (tokenizer, model)
     return model_cache[model_name]
 
+# Check language is supported
 def validate_languages(src_lang, tgt_lang):
     try:
         _ = MarianTokenizer.from_pretrained(f"Helsinki-NLP/opus-mt-{src_lang}-{tgt_lang}")
@@ -120,8 +128,8 @@ def validate_languages(src_lang, tgt_lang):
                 "Try using ISO 639-1 codes. "
                 f"Supported M2M100 languages: {sorted(list(M2M_LANGUAGES))}"
             )
-
-def translate(text, src_lang, tgt_lang):
+# Translate without LLM
+def sync_translate_huggingface(text, src_lang, tgt_lang):
     text, replacements = preprocess_text(text)
     model_type = validate_languages(src_lang, tgt_lang)
 
@@ -133,8 +141,7 @@ def translate(text, src_lang, tgt_lang):
             inputs = tokenizer(chunk, return_tensors="pt", truncation=True, padding=True)
             translated = model.generate(**inputs)
             outputs.append(tokenizer.decode(translated[0], skip_special_tokens=True))
-        result = " ".join(outputs)
-        return unmask_entities(result, replacements)
+        return unmask_entities(" ".join(outputs), replacements)
 
     else:  # m2m
         tokenizer, model = load_m2m_model()
@@ -145,5 +152,49 @@ def translate(text, src_lang, tgt_lang):
             inputs = tokenizer(chunk, return_tensors="pt", truncation=True, padding=True)
             generated = model.generate(**inputs, forced_bos_token_id=tokenizer.get_lang_id(tgt_lang))
             outputs.append(tokenizer.decode(generated[0], skip_special_tokens=True))
-        result = " ".join(outputs)
-        return unmask_entities(result, replacements)
+        return unmask_entities(" ".join(outputs), replacements)
+
+# LLM translation (w/Bring Your Own Prompt)
+def build_prompt(text: str, src_lang: str, tgt_lang: str) -> str:
+    # TO DO: Improve prompt (?)
+    return (
+        f"I want this translated from {src_lang.upper()}, to {tgt_lang.upper()}, "
+        "please only respond with the translation and nothing more. "
+        f"Content to translate: ```{text}```"
+    )
+
+async def call_llm_translate(text: str, src_lang: str, tgt_lang: str) -> str:
+    payload = {
+        "prompt": build_prompt(text, src_lang, tgt_lang),
+        "llm_vendor": "openai",
+        "model": "gpt-4o-mini",
+        "model_parameters": {},
+        "project_id": "string",
+        "timeout_secs": 30
+    }
+
+    async with httpx.AsyncClient() as client:
+        post_resp = await client.post(BYOP_API_URL, json=payload)
+        post_resp.raise_for_status()
+        task_id = post_resp.json()["data"]["task_id"]
+
+        # TO DO: check constants here make sense
+        for _ in range(TRANSLATION_MAX_RETRIES):
+            await asyncio.sleep(TRANSLATION_POLL_INTERVAL_SECS)
+            get_resp = await client.get(BYOP_API_URL, params={"task_id": task_id})
+            get_resp.raise_for_status()
+            result = get_resp.json()["data"]
+
+            if result["task_status"] == "DONE":
+                return result["task_content"]["choices"][0]["message"]["content"]
+
+        raise TimeoutError(f"Translation task '{task_id}' did not complete in time.")
+
+# Main translate definition
+async def translate(text, src_lang, tgt_lang, use_llm=False):
+    if use_llm:
+        text, replacements = preprocess_text(text)
+        translated = await call_llm_translate(text, src_lang, tgt_lang)
+        return unmask_entities(translated, replacements)
+
+    return await asyncio.to_thread(sync_translate_huggingface, text, src_lang, tgt_lang)

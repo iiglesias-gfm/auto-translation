@@ -3,6 +3,8 @@ from app.models import TranslationRequest, TranslationResponse
 from app.translation import translate, detect_language, get_best_browser_lang
 app = FastAPI()
 
+# TO DO: Check best practices for request error handling
+# TO DO: Implement response caching, i.e. don't translate the same thing twice
 @app.post("/translate", response_model=TranslationResponse)
 async def translate_text(req: TranslationRequest, request: Request):
     try:
@@ -41,6 +43,5 @@ from concurrent.futures import ThreadPoolExecutor
 
 executor = ThreadPoolExecutor()
 
-async def run_blocking_translate(*args, **kwargs):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(executor, translate, *args)
+async def run_blocking_translate(*args, use_llm=True, **kwargs):
+    return await translate(*args, use_llm=use_llm, **kwargs)
